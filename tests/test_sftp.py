@@ -7,6 +7,7 @@ except ImportError:  # Python 3.2 and below
 from django.test import TestCase
 from django.core.files.base import File
 from django.utils.six import BytesIO
+from django.utils.timezone import make_aware
 from storages.backends import sftpstorage
 
 
@@ -28,7 +29,7 @@ class SFTPStorageTest(TestCase):
 
     @patch('storages.backends.sftpstorage.SFTPStorage.sftp')
     def test_read(self, mock_sftp):
-        file_ = self.storage._read('foo')
+        self.storage._read('foo')
         self.assertTrue(mock_sftp.open.called)
 
     @patch('storages.backends.sftpstorage.SFTPStorage.sftp')
@@ -100,11 +101,25 @@ class SFTPStorageTest(TestCase):
                          datetime(2016, 7, 27, 21, 58, 4))
 
     @patch('storages.backends.sftpstorage.SFTPStorage.sftp', **{
+        'stat.return_value.st_atime': 1469674684.000000,
+    })
+    def test_get_accessed_time(self, mock_sftp):
+        self.assertEqual(self.storage.get_accessed_time('foo'),
+                         make_aware(datetime(2016, 7, 27, 21, 58, 4)))
+
+    @patch('storages.backends.sftpstorage.SFTPStorage.sftp', **{
         'stat.return_value.st_mtime': 1469674684.000000,
     })
     def test_modified_time(self, mock_sftp):
         self.assertEqual(self.storage.modified_time('foo'),
                          datetime(2016, 7, 27, 21, 58, 4))
+
+    @patch('storages.backends.sftpstorage.SFTPStorage.sftp', **{
+        'stat.return_value.st_mtime': 1469674684.000000,
+    })
+    def test_get_modified_time(self, mock_sftp):
+        self.assertEqual(self.storage.get_modified_time('foo'),
+                         make_aware(datetime(2016, 7, 27, 21, 58, 4)))
 
     def test_url(self):
         self.assertEqual(self.storage.url('foo'), '/media/foo')

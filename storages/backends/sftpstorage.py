@@ -14,6 +14,7 @@ from datetime import datetime
 
 from django.conf import settings
 from django.core.files.base import File
+from django.utils import timezone
 
 from storages.compat import urlparse, BytesIO, Storage
 from storages.utils import setting
@@ -172,19 +173,33 @@ class SFTPStorage(Storage):
                 files.append(item.filename)
         return dirs, files
 
+    def _stat(self, name):
+        return self.sftp.stat(self._remote_path(name))
+
     def size(self, name):
-        remote_path = self._remote_path(name)
-        return self.sftp.stat(remote_path).st_size
+        return self._stat(name).st_size
 
     def accessed_time(self, name):
-        remote_path = self._remote_path(name)
-        utime = self.sftp.stat(remote_path).st_atime
-        return datetime.fromtimestamp(utime)
+        return timezone.localtime(self.get_accessed_time(name)).replace(tzinfo=None)
+
+    def get_accessed_time(self, name):
+        utime = self._stat(name).st_atime
+        dt = datetime.fromtimestamp(utime)
+        if setting('USE_TZ'):
+            return timezone.make_aware(dt)
+        else:
+            return timezone.localtime(dt).replace(tzinfo=None)
 
     def modified_time(self, name):
-        remote_path = self._remote_path(name)
-        utime = self.sftp.stat(remote_path).st_mtime
-        return datetime.fromtimestamp(utime)
+        return timezone.localtime(self.get_modified_time(name)).replace(tzinfo=None)
+
+    def get_modified_time(self, name):
+        utime = self._stat(name).st_mtime
+        dt = datetime.fromtimestamp(utime)
+        if setting('USE_TZ'):
+            return timezone.make_aware(dt)
+        else:
+            return timezone.localtime(dt).replace(tzinfo=None)
 
     def url(self, name):
         if self._base_url is None:
