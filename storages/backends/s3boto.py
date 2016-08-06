@@ -180,7 +180,7 @@ class S3BotoStorageFile(File):
             self._flush_write_buffer()
             self._multipart.complete_upload()
         else:
-            if not self._multipart is None:
+            if self._multipart is not None:
                 self._multipart.cancel_upload()
         self.key.close()
         if self._file is not None:
